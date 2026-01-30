@@ -63,6 +63,7 @@ def add_pattern_scores(df_scores: pd.DataFrame,
     pat_score = (
         df_scores.groupby(pattern_col_scores, dropna=False)[final_col]
         .sum()
+        .clip(upper=10)
         .rsub(10)
         .rename("pattern_score")
     )
