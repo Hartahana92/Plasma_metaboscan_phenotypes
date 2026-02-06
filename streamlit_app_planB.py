@@ -326,15 +326,20 @@ df_indexes_out = pd.DataFrame(index_rows)
 # -----------------------------
 # Output tables with coloring (no matplotlib) + 1 decimal
 # -----------------------------
-st.subheader("Домены (df_domains)")
-st.dataframe(style_table_general(df_domains_out, vmin=1.0, vmax=10.0), use_container_width=True)
 
-st.subheader("Фенотипы (PH-1 … PH-9)")
-st.dataframe(style_table_general(df_phenotypes_out, vmin=1.0, vmax=10.0), use_container_width=True)
 
-st.subheader("Индексы (indexes)")
+
+
+
+
+st.subheader("Индексы")
 st.dataframe(style_indexes(df_indexes_out), use_container_width=True)
 
+st.subheader("Фенотипы")
+st.dataframe(style_table_general(df_phenotypes_out, vmin=1.0, vmax=10.0), use_container_width=True)
+
+st.subheader("Функциональные оси")
+st.dataframe(style_table_general(df_domains_out, vmin=1.0, vmax=10.0), use_container_width=True)
 # -----------------------------
 # Domain → patterns drilldown (fallback UI)
 # -----------------------------
