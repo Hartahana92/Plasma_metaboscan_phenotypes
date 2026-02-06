@@ -153,13 +153,14 @@ def calc_indexes(ph_scores_by_code: dict):
     elif (score_Ph3 < 5) and (score_Ph7 < 5):
         ARI = ARI * 0.5
 
-    MM1 = 10 - np.nanstd(ph)
-    if MM1 < 0:
-        MM1 = 0
+#    MM1 = 10 - np.nanstd(ph)
+#    if MM1 < 0:
+#        MM1 = 0
 
-    RPI = np.mean([RSI, ARI]) - LTI + 5
+#    RPI = np.mean([RSI, ARI]) - LTI + 5
 
-    return {"MHI_PH": MHI_PH, "LTI": LTI, "RSI": RSI, "ITI": ITI, "ORI": ORI, "ARI": ARI, "MM1": MM1, "RPI": RPI}
+#    return {"MHI_PH": MHI_PH, "LTI": LTI, "RSI": RSI, "ITI": ITI, "ORI": ORI, "ARI": ARI, "MM1": MM1, "RPI": RPI}
+    return {"MHI_PH": MHI_PH, "LTI": LTI, "RSI": RSI, "ITI": ITI, "ORI": ORI, "ARI": ARI}
 
 # -----------------------------
 # Styling without matplotlib (Plan B)
