@@ -160,7 +160,7 @@ def calc_indexes(ph_scores_by_code: dict):
 #    RPI = np.mean([RSI, ARI]) - LTI + 5
 
 #    return {"MHI_PH": MHI_PH, "LTI": LTI, "RSI": RSI, "ITI": ITI, "ORI": ORI, "ARI": ARI, "MM1": MM1, "RPI": RPI}
-    return {"MHI_PH": MHI_PH, "LTI": LTI, "RSI": RSI, "ITI": ITI, "ORI": ORI, "ARI": ARI}
+    return {"IMH": MHI_PH, "LTI": LTI, "RSI": RSI, "IME": ITI, "ORI": ORI, "ARI": ARI}
 
 # -----------------------------
 # Styling without matplotlib (Plan B)
