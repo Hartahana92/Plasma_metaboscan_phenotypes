@@ -55,6 +55,7 @@ def add_raw_and_final_scores(df: pd.DataFrame) -> pd.DataFrame:
     out["final_score"] = np.where(boost, out["raw_score"] * 2, out["raw_score"])
     return out
 
+
 def add_pattern_scores(
     df_scores: pd.DataFrame,
     df_patterns: pd.DataFrame,
@@ -75,12 +76,20 @@ def add_pattern_scores(
       (Power == "|z|≥2" & |z|>=2)
 
     Гейты (ограничения) на boost:
-      - EM-3: boost для weight=2 разрешён только при EM-3 триггерах (A или B)
-      - RA-3: boost для "Symmetrical Arg Methylation" разрешён только если
-              TotalDMA (SDMA) z >= +1
+      - EM-1/EM-2/EM-4: boost разрешён только если в этом же паттерне есть ДРУГОЙ маркер weight=2
+              с поддерживающим отклонением: обычно z>1, но для C2/C0 и C0/(C16+C18) — z<-1
+      - EM-3: boost для weight=2 разрешён только при EM-3 триггерах:
+              A) Ratio of AC-OHs to ACs z>=2
+                 OR
+              B) (есть OH-AC z>=2) AND (MetSO 1<=z<2 OR GSG -2<z<-1)
+      - RA-3: boost для "Symmetrical Arg Methylation" разрешён только если TotalDMA (SDMA) z>=+1
       - IS-1: boost разрешён только если (Kyn/Trp z>=2 OR Kynurenine z>=2)
-              И одновременно Trp/(Kyn+QA) z в диапазоне [-2, -1]
-              (если условие не выполнено -> снимаем boost со всего IS-1)
+              И одновременно Trp/(Kyn+QA) z в [-2, -1] (включительно)
+              иначе -> снимаем boost со всего IS-1
+      - IS-2: boost разрешён только если Quinolinic acid z>=2
+              И желательно подтверждение (любой из):
+                (Kyn/Quin z<=-1) OR (Kynurenic acid z<=-1) OR (Trp/(Kyn+QA) z<=-1)
+              иначе -> снимаем boost со всего IS-2
     """
 
     df = df_scores.copy()
@@ -104,13 +113,41 @@ def add_pattern_scores(
         x = x.replace("_", "-")
         x = x.replace("—", "-").replace("–", "-")
         x = x.replace(":", "-")
-        x = re.sub(r"[^A-Z0-9+\-./()]", "", x)  # оставим скобки, чтобы (SDMA) не потерять
+        x = re.sub(r"[^A-Z0-9+\-./()]", "", x)
         return x
 
     df["_m_norm"] = df[metabolite_col].map(_norm)
 
+    # веса (для EM-гейта)
+    w = pd.to_numeric(df[weight_col].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+
+    # ============================================================
+    # EM-1 / EM-2 / EM-4: boost только при наличии "другого" weight=2 с нужным z
+    # ============================================================
+    em_gate_patterns = {"EM-1", "EM-2", "EM-4"}
+    special_down_support = {_norm("C2/C0"), _norm("C0/(C16+C18)")}
+
+    for pat in em_gate_patterns:
+        if pat not in df[pattern_col_scores].astype(str).unique():
+            continue
+
+        pat_mask = df[pattern_col_scores].astype(str).str.strip().eq(pat)
+        is_w2 = pat_mask & w.apply(lambda x: np.isclose(x, 2) if pd.notna(x) else False)
+
+        idx_down = df.index[is_w2 & df["_m_norm"].isin(special_down_support) & (z < -1)]
+        idx_up = df.index[is_w2 & ~df["_m_norm"].isin(special_down_support) & (z > 1)]
+
+        support_set = set(idx_down).union(set(idx_up))
+
+        if not support_set:
+            boost.loc[df.index[pat_mask]] = False
+        else:
+            if len(support_set) == 1:
+                only_support = next(iter(support_set))
+                boost.loc[only_support] = False
+
     # =========================
-    # 1) EM-3: гейт на boost только для weight=2
+    # EM-3: гейт на boost только для weight=2
     # =========================
     if "EM-3" in df[pattern_col_scores].astype(str).unique():
         em3_mask = df[pattern_col_scores].astype(str).str.strip().eq("EM-3")
@@ -135,12 +172,14 @@ def add_pattern_scores(
             trigger_em3 = cond_ratio or (cond_oh_z2_any and (cond_metso_mid or cond_gsg_midneg))
 
             if not trigger_em3:
-                w2_idx = em3.index[em3["_w"].apply(lambda x: np.isclose(x, 2) if pd.notna(x) else False).values]
+                w2_idx = em3.index[
+                    em3["_w"].apply(lambda x: np.isclose(x, 2) if pd.notna(x) else False).values
+                ]
                 if len(w2_idx) > 0:
                     boost.loc[w2_idx] = False
 
     # =========================
-    # 2) RA-3: boost для "Symmetrical Arg Methylation" только если TotalDMA (SDMA) z>=+1
+    # RA-3: boost для "Symmetrical Arg Methylation" только если TotalDMA (SDMA) z>=+1
     # =========================
     if "RA-3" in df[pattern_col_scores].astype(str).unique():
         ra3_mask = df[pattern_col_scores].astype(str).str.strip().eq("RA-3")
@@ -160,7 +199,7 @@ def add_pattern_scores(
                     boost.loc[idx_target] = False
 
     # =========================
-    # 3) IS-1: (Kyn/Trp z>=2 OR Kynurenine z>=2) AND Trp/(Kyn+QA) z in [-2, -1]
+    # IS-1: (Kyn/Trp z>=2 OR Kynurenine z>=2) AND Trp/(Kyn+QA) z in [-2, -1]
     # =========================
     if "IS-1" in df[pattern_col_scores].astype(str).unique():
         is1_mask = df[pattern_col_scores].astype(str).str.strip().eq("IS-1")
@@ -179,6 +218,32 @@ def add_pattern_scores(
 
             if not (cond_kyn and cond_trp_band):
                 boost.loc[df.index[is1_mask]] = False
+
+    # =========================
+    # IS-2: Quinolinic acid z>=2 + подтверждение (Kyn/Quin z<=-1 OR Kynurenic acid z<=-1 OR Trp/(Kyn+QA) z<=-1)
+    # =========================
+    if "IS-2" in df[pattern_col_scores].astype(str).unique():
+        is2_mask = df[pattern_col_scores].astype(str).str.strip().eq("IS-2")
+
+        qa_name = _norm("Quinolinic acid")
+        kyn_quin = _norm("Kyn/Quin")
+        kyna_name = _norm("Kynurenic acid")
+        trp_ratio = _norm("Trp/(Kyn+QA)")
+
+        is2_rows = df.loc[is2_mask, [z_col, "_m_norm"]].copy()
+        if not is2_rows.empty:
+            z_is2 = pd.to_numeric(is2_rows[z_col].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+
+            cond_qa = z_is2[is2_rows["_m_norm"] == qa_name].ge(2).any()
+
+            cond_confirm = (
+                z_is2[is2_rows["_m_norm"] == kyn_quin].le(-1).any()
+                or z_is2[is2_rows["_m_norm"] == kyna_name].le(-1).any()
+                or z_is2[is2_rows["_m_norm"] == trp_ratio].le(-1).any()
+            )
+
+            if not (cond_qa and cond_confirm):
+                boost.loc[df.index[is2_mask]] = False
 
     # --- финальный скор метаболитов ---
     df["final_score"] = np.where(boost, df[raw_col] * 2, df[raw_col])
