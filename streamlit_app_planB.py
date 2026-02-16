@@ -30,7 +30,7 @@ def add_raw_and_final_scores(df: pd.DataFrame) -> pd.DataFrame:
         zd = z[mask_down]
         wd = w[mask_down]
         raw[mask_down] = np.select(
-            [zd > -1, (zd <= -1) & (zd >= -2), zd < -2],
+            [zd > -1.3, (zd <= -1.3) & (zd >= -2), zd < -2],
             [0, 1 * wd, 2 * wd],
             default=0
         )
@@ -39,7 +39,7 @@ def add_raw_and_final_scores(df: pd.DataFrame) -> pd.DataFrame:
         zu = z[mask_up]
         wu = w[mask_up]
         raw[mask_up] = np.select(
-            [zu < 1, (zu >= 1) & (zu <= 2), zu > 2],
+            [zu < 1.3, (zu >= 1.3) & (zu <= 2), zu > 2],
             [0, 1 * wu, 2 * wu],
             default=0
         )
