@@ -335,7 +335,7 @@ def calc_indexes(ph_scores_by_code: dict):
     ORI = (0.30*(10-score_Ph9) + 0.25*(10-score_Ph4) + 0.20*(10-score_Ph1) +
            0.15*(10-score_Ph5) + 0.10*(10-score_Ph7))
 
-    ARI = 0.25*10 + 0.20*score_Ph7 + 0.15*score_Ph3 + 0.15*score_Ph4 + 0.15*score_Ph8 + 0.10*score_Ph5
+    ARI = 0.25*score_Ph7 + 0.2*score_Ph3 + 0.2*score_Ph4 + 0.2*score_Ph8 + 0.15*score_Ph5
     if min(score_Ph3, score_Ph4, score_Ph7) < 4:
         ARI = ARI * 0.8
     elif (score_Ph3 < 5) and (score_Ph7 < 5):
